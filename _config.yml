@@ -1,0 +1,9 @@
+exclude:
+  - celq/
+  - build.sh
+  - DEPLOYMENT.md
+  - README.md
+
+# Include .wasm files (they might be excluded by default)
+include:
+  - celq.wasm

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>celq playground</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #ececec; margin: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .panel { display: flex; flex-direction: column; }
+        .panel-header { padding: 8px; background: #333; font-weight: bold; font-size: 0.9em; }
+        .CodeMirror { height: 250px; border: 1px solid #444; }
+        #run-btn { 
+            padding: 10px 30px; background: #2ecc71; border: none; color: white; 
+            font-weight: bold; cursor: pointer; border-radius: 4px; 
+        }
+        #run-btn:disabled { background: #7f8c8d; }
+        .controls { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 1.5rem; color: #2ecc71; }
+    </style>
+
+    <script type="module">
+        import { WASI, File, OpenFile, PreopenDirectory } from "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.3.0/dist/index.js";
+
+        let editors = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Box 1: CLI command (Bash)
+            editors.cmd = CodeMirror.fromTextArea(document.getElementById('cmd-input'), {
+                mode: 'shell', theme: 'monokai', lineNumbers: true
+            });
+            editors.cmd.setValue('celq --from-file expr.cel');
+
+            // Box 2: Stdin (JSON)
+            editors.stdin = CodeMirror.fromTextArea(document.getElementById('stdin-input'), {
+                mode: {name: 'javascript', json: true}, theme: 'monokai', lineNumbers: true
+            });
+            editors.stdin.setValue(JSON.stringify({"a": 1, "b": [1, 2, 3]}, null, 2));
+
+            // Box 3: Expression (CEL/Python Highlight)
+            editors.expr = CodeMirror.fromTextArea(document.getElementById('expr-input'), {
+                mode: 'python', theme: 'monokai', lineNumbers: true
+            });
+            editors.expr.setValue('this.b.filter(x, x >= 2)');
+
+            // Box 4: Output (Plain Text, Read Only)
+            editors.output = CodeMirror.fromTextArea(document.getElementById('output'), {
+                mode: 'text/plain', theme: 'monokai', readOnly: true
+            });
+
+            document.getElementById('status').textContent = 'Ready';
+            document.getElementById('run-btn').disabled = false;
+        });
+
+        async function runCelq() {
+            const statusEl = document.getElementById('status');
+            const runBtn = document.getElementById('run-btn');
+            
+            try {
+                runBtn.disabled = true;
+                statusEl.textContent = 'Running...';
+                editors.output.setValue('');
+
+                const cmdLine = editors.cmd.getValue().trim();
+                const stdinText = editors.stdin.getValue();
+                const exprText = editors.expr.getValue();
+
+                // 1. Prepare Arguments (Stripping the leading 'celq' if present)
+                let args = parseCommandLine(cmdLine);
+                if (args[0] === 'celq') args.shift();
+
+                // 2. Setup Filesystem
+                const encoder = new TextEncoder();
+                const stdinFile = new File(encoder.encode(stdinText));
+                const stdoutFile = new File([]); 
+                const stderrFile = new File([]);
+
+                const rootDir = new PreopenDirectory("/", new Map([
+                    ["expr.cel", new File(encoder.encode(exprText))]
+                ]));
+
+                // 3. Initialize WASI
+                const wasi = new WASI(["celq", ...args], [], [
+                    new OpenFile(stdinFile),
+                    new OpenFile(stdoutFile),
+                    new OpenFile(stderrFile)
+                ], [rootDir]);
+
+                // 4. Fetch and Run
+                const response = await fetch('celq.wasm');
+                const wasmBytes = await response.arrayBuffer();
+                const { instance } = await WebAssembly.instantiate(await WebAssembly.compile(wasmBytes), {
+                    wasi_snapshot_preview1: wasi.wasiImport
+                });
+
+                try {
+                    wasi.start(instance);
+                } catch (e) {
+                    // Note: many WASI programs "error" with an exit code of 0 or similar
+                    console.log("Process exited", e);
+                }
+
+                // 5. Decode Output
+                const decoder = new TextDecoder();
+                const stdoutText = decoder.decode(stdoutFile.data);
+                const stderrText = decoder.decode(stderrFile.data);
+
+                if (stderrText) {
+                    editors.output.setValue(`--- STDERR ---\n${stderrText}\n--- STDOUT ---\n${stdoutText}`);
+                } else {
+                    editors.output.setValue(stdoutText || "(No output generated)");
+                }
+                
+                statusEl.textContent = 'Done';
+            } catch (err) {
+                editors.output.setValue(`Execution Error: ${err.message}`);
+                statusEl.textContent = 'Error';
+            } finally {
+                runBtn.disabled = false;
+            }
+        }
+
+        function parseCommandLine(cmd) {
+            return cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g).map(s => s.replace(/^['"]|['"]$/g, ''));
+        }
+
+        window.runCelq = runCelq;
+    </script>
+</head>
+<body>
+    <div class="controls">
+        <h1>celq playground</h1>
+        <button id="run-btn" onclick="runCelq()" disabled>RUN</button>
+        <span id="status">Loading WASM...</span>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <div class="panel-header">CLI Command (Bash)</div>
+            <textarea id="cmd-input"></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Stdin (JSON)</div>
+            <textarea id="stdin-input"></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">expr.cel (File System)</div>
+            <textarea id="expr-input"></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Output (stdout)</div>
+            <textarea id="output"></textarea>
+        </div>
+    </div>
+</body>
+</html>
