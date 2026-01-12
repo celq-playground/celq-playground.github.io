@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,16 +96,41 @@
 
                 // 4. Fetch and Run
                 const response = await fetch('celq.wasm');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch celq.wasm: ${response.status} ${response.statusText}`);
+                }
                 const wasmBytes = await response.arrayBuffer();
-                const { instance } = await WebAssembly.instantiate(await WebAssembly.compile(wasmBytes), {
+                console.log(`Loaded WASM file: ${wasmBytes.byteLength} bytes`);
+                
+                const { instance } = await WebAssembly.instantiate(wasmBytes, {
                     wasi_snapshot_preview1: wasi.wasiImport
                 });
 
+                // Debug: Log available exports
+                console.log("Available WASM exports:", Object.keys(instance.exports));
+
+                // Initialize WASI with the instance
+                wasi.inst = instance;
+
+                // Initialize WASI
+                let exitCode = 0;
                 try {
-                    wasi.start(instance);
+                    // Check which entry point exists and call it
+                    if (typeof instance.exports._start === 'function') {
+                        console.log("Calling _start directly");
+                        instance.exports._start();
+                    } else if (typeof instance.exports._initialize === 'function') {
+                        console.log("Calling _initialize");
+                        instance.exports._initialize();
+                    } else {
+                        throw new Error("WASM module has no _start or _initialize export");
+                    }
                 } catch (e) {
-                    // Note: many WASI programs "error" with an exit code of 0 or similar
-                    console.log("Process exited", e);
+                    // Capture exit code if available
+                    if (e && typeof e.code === 'number') {
+                        exitCode = e.code;
+                    }
+                    console.log("Process exited:", e);
                 }
 
                 // 5. Decode Output
@@ -120,8 +146,18 @@
                 
                 statusEl.textContent = 'Done';
             } catch (err) {
-                editors.output.setValue(`Execution Error: ${err.message}`);
+                let errorMsg = `Execution Error: ${err.message}`;
+                
+                // Provide helpful context for common errors
+                if (err.message.includes('Failed to fetch')) {
+                    errorMsg += '\n\nMake sure celq.wasm is in the same directory as this HTML file.';
+                } else if (err.message.includes('no _start')) {
+                    errorMsg += '\n\nThe WASM module appears to be missing the standard entry point.\nCheck console for available exports.';
+                }
+                
+                editors.output.setValue(errorMsg);
                 statusEl.textContent = 'Error';
+                console.error('Full error:', err);
             } finally {
                 runBtn.disabled = false;
             }
