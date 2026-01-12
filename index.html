@@ -73,6 +73,30 @@
             color: #73b8ff;
             font-size: 0.9em;
         }
+        .repo-link {
+            font-size: 0.85em;
+            color: #73b8ff;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+        .repo-link:hover {
+            color: #59c2ff;
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #4d5566;
+        }
+        .footer a {
+            color: #73b8ff;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: #59c2ff;
+            text-decoration: underline;
+        }
     </style>
 
     <script type="module">
@@ -221,6 +245,7 @@
 <body>
     <div class="controls">
         <h1>celq playground</h1>
+        <a href="https://github.com/IvanIsCoding/celq/" class="repo-link" target="_blank">→ GitHub</a>
         <button id="run-btn" onclick="runCelq()" disabled>RUN</button>
         <span id="status">Loading WASM...</span>
     </div>
@@ -245,6 +270,10 @@
             <div class="panel-header">Output (stdout)</div>
             <textarea id="output"></textarea>
         </div>
+    </div>
+
+    <div class="footer">
+        Powered by <a href="https://github.com/cel-rust/cel-rust" target="_blank">cel-rust</a> and <a href="https://github.com/bjorn3/browser_wasi_shim" target="_blank">browser_wasi_shim</a>
     </div>
 </body>
 </html>
