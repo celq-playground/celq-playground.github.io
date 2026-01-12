@@ -7,7 +7,11 @@ Tis is the playground for [celq](https://github.com/IvanIsCoding/celq). See it l
 `celq` is compiled with:
 
 ```bash
-cargo build --no-default-features   --release --target wasm32-wasip1
+cargo build \
+  --no-default-features \
+  --features "from-toml,from-yaml" \
+  --release \
+  --target wasm32-wasip1
 ```
 
 Behind the scenes, [browser_wasi_shim](https://github.com/bjorn3/browser_wasi_shim) provides the glue that makes the Rust binary work in the browser
