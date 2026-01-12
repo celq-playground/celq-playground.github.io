@@ -155,7 +155,7 @@
                 const stdoutFile = new File([]); 
                 const stderrFile = new File([]);
 
-                const rootDir = new PreopenDirectory("/", new Map([
+                const rootDir = new PreopenDirectory(".", new Map([
                     ["expr.cel", new File(encoder.encode(exprText))]
                 ]));
 
@@ -163,8 +163,11 @@
                 const wasi = new WASI(["celq", ...args], [], [
                     new OpenFile(stdinFile),
                     new OpenFile(stdoutFile),
-                    new OpenFile(stderrFile)
-                ], [rootDir]);
+                    new OpenFile(stderrFile),
+                    new PreopenDirectory(".", [
+                        ["expr.cel", new File(encoder.encode(exprText))]
+                    ])
+                ]);
 
                 // 4. Fetch and Run
                 const response = await fetch('celq.wasm');
