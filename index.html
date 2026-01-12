@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,25 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>celq playground</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/nord.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #ececec; margin: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .panel { display: flex; flex-direction: column; }
-        .panel-header { padding: 8px; background: #333; font-weight: bold; font-size: 0.9em; }
-        .CodeMirror { height: 250px; border: 1px solid #444; }
-        #run-btn { 
-            padding: 10px 30px; background: #2ecc71; border: none; color: white; 
-            font-weight: bold; cursor: pointer; border-radius: 4px; 
+        body { 
+            font-family: sans-serif; 
+            background: #0f1419; 
+            color: #bfbdb6; 
+            margin: 20px; 
         }
-        #run-btn:disabled { background: #7f8c8d; }
-        .controls { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-        h1 { margin: 0; font-size: 1.5rem; color: #2ecc71; }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            margin-top: 20px; 
+        }
+        .panel { 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .panel-header { 
+            padding: 8px; 
+            background: #1f2430; 
+            font-weight: bold; 
+            font-size: 0.9em; 
+            color: #59c2ff;
+            border-bottom: 2px solid #39bae6;
+        }
+        .CodeMirror { 
+            height: 250px; 
+            border: 1px solid #232834;
+            background: #0b0e14;
+        }
+        #run-btn { 
+            padding: 10px 30px; 
+            background: #39bae6; 
+            border: none; 
+            color: #0f1419; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        #run-btn:hover:not(:disabled) {
+            background: #59c2ff;
+        }
+        #run-btn:disabled { 
+            background: #4d5566; 
+            color: #8a8f98;
+        }
+        .controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+        }
+        h1 { 
+            margin: 0; 
+            font-size: 1.5rem; 
+            color: #59c2ff; 
+        }
+        #status {
+            color: #73b8ff;
+            font-size: 0.9em;
+        }
     </style>
 
     <script type="module">
@@ -35,25 +83,25 @@
         window.addEventListener('DOMContentLoaded', () => {
             // Box 1: CLI command (Bash)
             editors.cmd = CodeMirror.fromTextArea(document.getElementById('cmd-input'), {
-                mode: 'shell', theme: 'monokai', lineNumbers: true
+                mode: 'shell', theme: 'nord', lineNumbers: true
             });
             editors.cmd.setValue('celq --from-file expr.cel');
 
             // Box 2: Stdin (JSON)
             editors.stdin = CodeMirror.fromTextArea(document.getElementById('stdin-input'), {
-                mode: {name: 'javascript', json: true}, theme: 'monokai', lineNumbers: true
+                mode: {name: 'javascript', json: true}, theme: 'nord', lineNumbers: true
             });
             editors.stdin.setValue(JSON.stringify({"a": 1, "b": [1, 2, 3]}, null, 2));
 
             // Box 3: Expression (CEL/Python Highlight)
             editors.expr = CodeMirror.fromTextArea(document.getElementById('expr-input'), {
-                mode: 'python', theme: 'monokai', lineNumbers: true
+                mode: 'python', theme: 'nord', lineNumbers: true
             });
             editors.expr.setValue('this.b.filter(x, x >= 2)');
 
             // Box 4: Output (Plain Text, Read Only)
             editors.output = CodeMirror.fromTextArea(document.getElementById('output'), {
-                mode: 'text/plain', theme: 'monokai', readOnly: true
+                mode: 'text/plain', theme: 'nord', readOnly: true
             });
 
             document.getElementById('status').textContent = 'Ready';
